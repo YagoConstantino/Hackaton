@@ -1,0 +1,12 @@
+{
+ "agencia": "Bangkok",
+ "carregadores": {
+  "ac_22x2": 3
+ },
+ "entrada": "b3_75",
+ "politica": {
+  "prioridade": "chegada",
+  "evitar_ponta": true,
+  "divisao": "igual"
+ }
+}

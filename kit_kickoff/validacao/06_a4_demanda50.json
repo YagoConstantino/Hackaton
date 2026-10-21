@@ -1,0 +1,15 @@
+{
+ "agencia": "Bangkok",
+ "carregadores": {
+  "dc_120x2": 1,
+  "dc_30": 2,
+  "ac_11": 2
+ },
+ "entrada": "a4_150",
+ "demanda_contratada_kw": 50,
+ "politica": {
+  "prioridade": "menor_soc",
+  "evitar_ponta": false,
+  "divisao": "prioridade"
+ }
+}
