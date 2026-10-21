@@ -8,7 +8,12 @@ pip install -r ml/requirements.txt
 python3 -m unittest testes.test_ml -v                       # testes (todas as agências + agência sintética)
 python3 -m ml.rodar Istanbul --amostras 300 --cenarios 5    # -> ml/saida/Istanbul/relatorio.md
 python3 -m ml.rodar --todas --amostras 200
+python3 -m ml.rodar Istanbul --entradas existente           # só a entrada atual (padrão: auto = explora B3/A4)
 ```
+
+O relatório traz (1) os melhores candidatos com a entrada atual e (2) a melhor configuração **para cada limite
+de potência** (b3_75, A4 com 60…270 kW de demanda), com e sem `evitar_ponta`. Recomendações excluem
+`menor_soc` + `divisao=prioridade` até essa combinação bater com o juiz (`--incluir-nao-validadas` para incluir).
 
 | Módulo | Faz |
 |---|---|
