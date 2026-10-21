@@ -42,7 +42,8 @@ def _serie_md(s: pd.Series, nome="valor", n=10) -> str:
     return _md(s.head(n).rename(nome).reset_index().rename(columns={"index": "feature"}), 3)
 
 
-def analisar(agencia: str, etapas=ETAPAS, amostras=300, top=10, cenarios=0, workers=None, catalogo=None) -> Path:
+def analisar(agencia: str, etapas=ETAPAS, amostras=300, top=10, cenarios=0, workers=None, catalogo=None,
+             entradas="auto", incluir_nao_validadas=False) -> Path:
     warnings.filterwarnings("ignore")
     t0 = time.time()
     out_dir = SAIDA / agencia
@@ -105,10 +106,18 @@ def analisar(agencia: str, etapas=ETAPAS, amostras=300, top=10, cenarios=0, work
 
     if "carregadores" in etapas:
         t = time.time()
-        df = C.gerar_dataset(cen, n=amostras, workers=workers)
+        ents = C.entradas_auto(cen) if entradas == "auto" else [(cen.agencia.entrada_existente, None)]
+        df = C.gerar_dataset(cen, n=amostras, entradas=ents, workers=workers)
         df.to_csv(out_dir / "dataset_surrogate.csv", index=False)
         mods = C.treinar(df)
-        rec = C.recomendar(cen, mods, top=top, cat=catalogo, cenarios=cenarios, workers=workers)
+        pols = C.POLITICAS if incluir_nao_validadas else C.POLITICAS_VALIDADAS
+        rec = C.recomendar(cen, mods, top=top, cat=catalogo, cenarios=cenarios, workers=workers,
+                           entradas=[(cen.agencia.entrada_existente, None)], politicas=pols)
+        por_ent = {}
+        if len(ents) > 1:
+            for ev in (False, True):
+                pe = [p for p in pols if p["evitar_ponta"] == ev]
+                por_ent[ev] = C.melhor_por_entrada(cen, mods, ents, politicas=pe, cenarios=cenarios, workers=workers)
         rec.drop(columns=["submissao"]).to_csv(out_dir / "recomendacoes.csv", index=False)
         (out_dir / "submissoes_candidatas.json").write_text(
             json.dumps(list(rec.submissao), ensure_ascii=False, indent=1), encoding="utf-8")
@@ -126,7 +135,25 @@ def analisar(agencia: str, etapas=ETAPAS, amostras=300, top=10, cenarios=0, work
                _serie_md(mods["nao_atendidos"]["importancia"], "delta_MAE"), "",
                "### Melhores candidatos (confirmados no motor)", "",
                "Sem catálogo com custos (Neblina), a ordem é: menos perdidos → menos upgrades → menos kW instalado.", "",
-               _md(rec[cols], 1), "", "Submissões prontas em `submissoes_candidatas.json` (testar com `simular.py`).", "",
+               _md(rec[cols], 1), "", "Submissões prontas em `submissoes_candidatas.json` (testar com `simular.py`).", ""]
+        if por_ent:
+            todas = pd.concat(por_ent.values(), ignore_index=True)
+            (out_dir / "submissoes_por_entrada.json").write_text(
+                json.dumps(list(todas.submissao), ensure_ascii=False, indent=1), encoding="utf-8")
+            todas.drop(columns=["submissao"]).to_csv(out_dir / "melhor_por_entrada.csv", index=False)
+            md += ["### Melhor configuração para cada limite de potência (entrada / demanda)", "",
+                   "Mesmo limite = mesma física; simulamos a entrada de menor kVA que comporta cada demanda. "
+                   "Decidir com os custos de H4: ampliar vale se os perdidos/upgrades evitados pagam a obra da "
+                   "entrada + a demanda contratada (A4/SE paga por kW; B3 não paga). Duas tabelas: sem e com "
+                   "`evitar_ponta` (a troca é kWh na ponta × perdidos/upgrades).", ""]
+            for ev, df_e in por_ent.items():
+                cols_e = [c for c in dict.fromkeys(["entrada", "demanda", "limite_kw"] + cols) if c in df_e]
+                md += [f"**evitar_ponta = {str(ev).lower()}**", "", _md(df_e[cols_e], 1), ""]
+            md += ["Submissões em `submissoes_por_entrada.json`.", ""]
+        if not incluir_nao_validadas:
+            md += ["_Recomendações excluem `menor_soc` + `divisao=prioridade` (ainda diverge do juiz no teste 06); "
+                   "use `--incluir-nao-validadas` para incluir._", ""]
+        md += ["",
                "### Fronteira de Pareto (perdidos previstos × kW nominal)", "",
                _md(fr[["config", "pol_prioridade", "pol_divisao", "pol_evitar_ponta", "kw_nominal", "p_nao_atendidos",
                        "p_upgrades"]].head(15), 1), ""]
@@ -145,6 +172,10 @@ def main() -> None:
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--cenarios", type=int, default=0, help="semanas reamostradas para checar robustez dos top")
     ap.add_argument("--workers", type=int)
+    ap.add_argument("--entradas", choices=["auto", "existente"], default="auto",
+                    help="auto: explora B3 maior e A4/SE com várias demandas; existente: só a atual")
+    ap.add_argument("--incluir-nao-validadas", action="store_true",
+                    help="inclui políticas que ainda divergem do juiz (menor_soc + divisao=prioridade)")
     a = ap.parse_args()
     cat_path = F.DADOS / "catalogo.json"
     cat = json.loads(cat_path.read_text(encoding="utf-8")) if cat_path.exists() else None
@@ -153,7 +184,7 @@ def main() -> None:
         raise SystemExit("informe a agência ou --todas")
     sys.stdout.reconfigure(encoding="utf-8")
     for ag in ags:
-        p = analisar(ag, tuple(a.etapas.split(",")), a.amostras, a.top, a.cenarios, a.workers, cat)
+        p = analisar(ag, tuple(a.etapas.split(",")), a.amostras, a.top, a.cenarios, a.workers, cat, a.entradas, a.incluir_nao_validadas)
         print(f"{ag}: {p}")
 
 

@@ -2,25 +2,24 @@
  {
   "agencia": "Istanbul",
   "carregadores": {
-   "ac_11": 1,
-   "dc_30": 2
+   "dc_60x2": 2
   },
-  "entrada": "b3_45",
+  "entrada": "a4_150",
   "politica": {
-   "prioridade": "chegada",
-   "divisao": "igual",
-   "evitar_ponta": false
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": true
   }
  },
  {
-  "agencia": "Istanbul",
+  "agencia": "Hanoi",
   "carregadores": {
-   "ac_7": 1,
+   "dc_60x2": 2,
    "dc_30": 2
   },
-  "entrada": "b3_45",
+  "entrada": "b3_75",
   "politica": {
-   "prioridade": "chegada",
+   "prioridade": "proxima_retirada",
    "divisao": "igual",
    "evitar_ponta": false
   }

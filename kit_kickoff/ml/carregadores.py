@@ -33,6 +33,10 @@ from .sintetico import reamostrar_semanas
 ALVOS = ["nao_atendidos", "upgrades", "energia_ponta_kwh", "pico_kw"]
 POLITICAS = [{"prioridade": p, "divisao": d, "evitar_ponta": e}
              for p in validar.MENU["prioridade"] for d in validar.MENU["divisao"] for e in (False, True)]
+# menor_soc + divisao=prioridade ainda diverge do juiz (validacao/06): fora das recomendações por padrão
+NAO_VALIDADAS = [{"prioridade": "menor_soc", "divisao": "prioridade"}]
+POLITICAS_VALIDADAS = [p for p in POLITICAS
+                       if not any(all(p[k] == v for k, v in nv.items()) for nv in NAO_VALIDADAS)]
 
 
 # ---------------------------------------------------------------- espaço de busca
@@ -61,6 +65,59 @@ def entradas_validas(cen, demandas=(None,)) -> list:
             for d in demandas:
                 if d is None or validar.DEMANDA_MIN_KW <= validar.arredondar_demanda(d) <= validar.teto_demanda(e):
                     out.append((e.id, d))
+    return out
+
+
+def entradas_auto(cen, demandas=(60, 80, 100, 130, 160, 200, 270), kw_max=270.0) -> list:
+    """Opções de limite de potência a explorar: a entrada existente, o B3 maior (se puder subir; B3 não
+    paga demanda) e, para cada demanda contratada, a MENOR entrada A4/SE que a comporta.
+    Mesmo limite = mesma física; só o custo muda, então simulamos só a opção de menor kVA."""
+    ex = cen.entradas[cen.agencia.entrada_existente]
+    out = [(ex.id, None)]
+    b3 = [e for e in cen.entradas.values()
+          if e.id != ex.id and e.kva <= validar.B3_KVA and e.kva >= validar.B3_KVA and e.kw_util > ex.kw_util]
+    out += [(e.id, None) for e in sorted(b3, key=lambda e: e.kva)]
+    a4 = sorted((e for e in cen.entradas.values()
+                 if e.kva > validar.B3_KVA and ex.kw_util <= e.kw_util <= kw_max + 1e-9), key=lambda e: e.kva)
+    for d in demandas:
+        if d <= ex.kw_util:
+            continue
+        e = next((e for e in a4 if validar.DEMANDA_MIN_KW <= d <= validar.teto_demanda(e)), None)
+        if e is not None:
+            out.append((e.id, d))
+    return out
+
+
+def melhor_por_entrada(cen, modelos, entradas, politicas=None, cenarios=0, workers=None) -> pd.DataFrame:
+    """Para cada opção de entrada/demanda, a melhor configuração (confirmada no motor): a tabela para
+    decidir se vale ampliar (perdidos evitados × custo da obra e da demanda, que saem em H4)."""
+    linhas, vencedores = [], []
+    chave = ["nao_atendidos", "upgrades", "kw_nominal", "energia_ponta_kwh"]
+    lim = {e: validar.limite_kw(validar.normalizar(_sub(cen, {next(iter(cen.carregadores)): 1}, {}, *e), cen), cen)
+           for e in entradas}
+    for ent in sorted(entradas, key=lambda e: lim[e]):
+        r = recomendar(cen, modelos, top=3, politicas=politicas, entradas=[ent], cenarios=cenarios, workers=workers)
+        # leva os vencedores dos limites menores: com mais limite eles rendem pelo menos o mesmo
+        extra = [(_de_texto(w.config), {"prioridade": w.pol_prioridade, "divisao": w.pol_divisao,
+                                        "evitar_ponta": bool(w.pol_evitar_ponta)}) for w in vencedores]
+        extra = [(c, p) for c, p in extra if not ((r.config == _texto(c)) & (r.pol_prioridade == p["prioridade"]) &
+                                                  (r.pol_divisao == p["divisao"]) & (r.pol_evitar_ponta == p["evitar_ponta"])).any()]
+        if extra:
+            reais = _mapear(cen, [(c, p, *ent, None) for c, p in extra], workers)
+            add = pd.DataFrame([{"config": _texto(c), "entrada": ent[0], "demanda": ent[1], "pol_prioridade": p["prioridade"],
+                                 "pol_divisao": p["divisao"], "pol_evitar_ponta": p["evitar_ponta"],
+                                 "kw_nominal": features_config(cen, c, p, *ent)["kw_nominal"],
+                                 **{k: m[k] for k in ("nao_atendidos", "upgrades", "energia_ponta_kwh", "pico_kw")},
+                                 "submissao": _sub(cen, c, p, *ent)} for (c, p), m in zip(extra, reais)])
+            if cenarios:
+                rob = _mapear(cen, [(c, p, *ent, s) for c, p in extra for s in range(1, cenarios + 1)], workers)
+                perdas = np.array([m["nao_atendidos"] for m in rob]).reshape(len(extra), cenarios)
+                add["perdidos_media_reamostr"], add["perdidos_pior_reamostr"] = perdas.mean(axis=1), perdas.max(axis=1)
+            r = pd.concat([r, add], ignore_index=True).sort_values(chave).reset_index(drop=True)
+        linhas.append(r.iloc[0])
+        vencedores.append(r.iloc[0])
+    out = pd.DataFrame(linhas).reset_index(drop=True)
+    out["limite_kw"] = [validar.limite_kw(validar.normalizar(s, cen), cen) for s in out.submissao]
     return out
 
 
