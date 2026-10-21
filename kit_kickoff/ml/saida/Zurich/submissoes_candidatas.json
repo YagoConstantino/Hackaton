@@ -1,0 +1,130 @@
+[
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "dc_30": 4
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "dc_30": 1,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "dc_30": 2,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "dc_60x2": 2
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "ac_7": 2,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "dc_60x2": 2
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "igual",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "ac_22x2": 1,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "ac_11": 2,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "ac_22x2": 1,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "igual",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Zurich",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_7": 1,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_75",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ }
+]

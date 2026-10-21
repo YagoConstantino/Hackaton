@@ -1,0 +1,123 @@
+[
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "menor_soc",
+   "divisao": "prioridade",
+   "evitar_ponta": true
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": true
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "chegada",
+   "divisao": "prioridade",
+   "evitar_ponta": true
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "menor_soc",
+   "divisao": "igual",
+   "evitar_ponta": true
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "igual",
+   "evitar_ponta": true
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "chegada",
+   "divisao": "igual",
+   "evitar_ponta": true
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "igual",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "ac_7": 4
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Bangkok",
+  "carregadores": {
+   "ac_22x2": 1,
+   "ac_7": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "chegada",
+   "divisao": "igual",
+   "evitar_ponta": false
+  }
+ }
+]
