@@ -27,6 +27,7 @@ EPS = 1e-9  # tolerância de ponto flutuante para SOC/potência
 # Leitura da regra 6.3.4 (estimativa do carregador): "simples" = min(nominal/n, curva do carro);
 # "agua" = enchimento de água com quem já está no carregador. Trocar se o juiz divergir.
 ESTIMATIVA_PONTO = "simples"
+CASAS_ORDEM = 6  # arredondamento de km/SOC nas ordenações da fila (empates exatos vão para o id)
 # Carro num carregador que quebra: False = continua plugado a 0 kW (não troca de carregador, 5.4);
 # True = volta para a fila. Confirmar no anúncio do evento.
 EVENTO_QUEBRA_DESPLUGA = False
@@ -295,13 +296,16 @@ class Motor:
 
     def _chave_prioridade(self, v: Veiculo):
         """Chave de ordenação da política (6.3.3); usada na fila e na divisão `prioridade` (6.3.5)."""
+        # km e SOC arredondados (CASAS_ORDEM): km_devolucao é inteiro, então muitos carros empatam
+        # exatamente; sem arredondar, o ruído de ponto flutuante de autonomia × (km/autonomia) decidia
+        # o empate em vez do id. Confirmado contra o juiz (teste 08 de validacao/).
         pr = self.pol["prioridade"]
         if pr == "chegada":
             t = v.entrou_fila_t if v.entrou_fila_t is not None else math.inf
             return (t, v.id)
         if pr == "proxima_retirada":
-            return (self._proxima_reserva(v), -v.soc, v.id)
-        return (v.modelo.autonomia_km * v.soc / 100.0, v.id)  # menor_soc: km restantes
+            return (self._proxima_reserva(v), -round(v.soc, CASAS_ORDEM), v.id)
+        return (round(v.modelo.autonomia_km * v.soc / 100.0, CASAS_ORDEM), v.id)  # menor_soc: km restantes
 
     def _registrar_fila(self, evento: str) -> None:
         """Atualiza o valor da fila reportado na série, conforme REGISTRO_FILA."""

@@ -1,0 +1,142 @@
+[
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "ac_11": 2,
+   "dc_120x2": 2,
+   "dc_60x2": 2
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "ac_11": 2,
+   "dc_120x2": 3,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "ac_11": 2,
+   "dc_120x2": 4
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "dc_120x2": 4,
+   "dc_30": 2
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "ac_11": 2,
+   "dc_120x2": 2,
+   "dc_60x2": 2
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": true
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "ac_22x2": 1,
+   "dc_120x2": 3,
+   "dc_30": 2
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "dc_120x2": 3,
+   "dc_30": 2,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "dc_120x2": 2,
+   "dc_30": 2,
+   "dc_60x2": 2
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "ac_22x2": 1,
+   "dc_120x2": 2,
+   "dc_30": 2,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Marrakech",
+  "carregadores": {
+   "ac_22x2": 1,
+   "dc_120x2": 2,
+   "dc_30": 2,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": true
+  }
+ }
+]

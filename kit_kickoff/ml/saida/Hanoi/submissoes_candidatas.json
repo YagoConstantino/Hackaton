@@ -1,0 +1,146 @@
+[
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_22x2": 1,
+   "dc_30": 1,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_7": 3,
+   "dc_120x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_22x2": 1,
+   "dc_120x2": 1,
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_7": 4,
+   "dc_120x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_22x2": 1,
+   "dc_30": 3
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_22x2": 1,
+   "ac_7": 2,
+   "dc_120x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 2,
+   "ac_22x2": 1,
+   "dc_120x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_22x2": 1,
+   "ac_7": 1,
+   "dc_60x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_22x2": 1,
+   "ac_7": 1,
+   "dc_120x2": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "proxima_retirada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ },
+ {
+  "agencia": "Hanoi",
+  "carregadores": {
+   "ac_11": 1,
+   "ac_22x2": 1,
+   "dc_120x2": 1,
+   "dc_30": 1
+  },
+  "entrada": "b3_45",
+  "politica": {
+   "prioridade": "chegada",
+   "divisao": "prioridade",
+   "evitar_ponta": false
+  }
+ }
+]
