@@ -220,6 +220,8 @@ class Motor:
     def on_retirada(self, contrato_id: str, t: float) -> None:
         self.avancar(t)
         c = self.contratos[contrato_id]
+        self._init_reservas()
+        self._feitos.add(c.id)
         v = self.escolher_carro(c, t)
         if v is None:
             self.nao_atendidos.append(t)
@@ -232,147 +234,183 @@ class Motor:
         if estava_plugado:
             self.recalcular_potencias(t)
 
-    # ================= TODO: regras de operação =================
+    # ================= regras de operação (implementadas) =================
+
+    EPS = 1e-9
 
     def soc_devolucao(self, v: Veiculo, c) -> float:
-        """SOC com que o carro volta (regulamento 4.1).
-
-        SOC = km_devolucao / autonomia_km do modelo que atendeu * 100, nunca acima do SOC com que saiu
-        (`v.soc` neste momento). `c.km_devolucao` é a autonomia restante em km.
-        """
-        # TODO(etapa 2)
-        return v.soc
+        """4.1: SOC = km_devolucao / autonomia_km * 100, nunca acima do SOC de saída."""
+        if c.km_devolucao is None:
+            return v.soc
+        return min(v.soc, c.km_devolucao / v.modelo.autonomia_km * 100.0)
 
     def entrar_patio(self, v: Veiculo, t: float) -> None:
-        """Carro entra no pátio (T0 ou devolução).
-
-        Abaixo do SOC alvo (80%) vai para a fila de recarga (5.2), registrando `entrou_fila_t`;
-        acima, fica apto no pátio. Depois tente plugar (`plugar_fila`) e recalcule as potências.
-        """
-        # TODO(etapa 2)
+        """5.2: abaixo de 80% vai para a fila; depois tenta plugar e recalcula."""
         self.patio[v.id] = v
+        if v.soc < v.alvo - self.EPS:
+            v.na_fila = True
+            v.entrou_fila_t = t
+            self.fila.append(v)
+            self.plugar_fila(t)
+            self.recalcular_potencias(t)
 
     def escolher_carro(self, c, t: float) -> Optional[Veiculo]:
-        """Carro do pátio para o contrato c, ou None (cliente perdido). Regulamento 5.1 e 6.3.1.
+        """5.1/6.3.1: categoria >= pedida e SOC >= 80; menor upgrade -> menor SOC -> não plugado -> id."""
+        if not self.aberta:
+            return None
+        aptos = [v for v in self.patio.values() if v.rank >= c.rank and v.soc >= validar.SOC_ALVO - 1e-7]
+        if not aptos:
+            return None
+        return min(aptos, key=lambda v: (v.rank - c.rank, v.soc, v.plugado, v.id))
 
-        Elegível: categoria >= pedida (`v.rank >= c.rank`; upgrade sim, downgrade nunca) e SOC >= 80%.
-        Ordem: menor upgrade -> menor SOC -> não plugado -> menor `id` (alfabético).
-        Ex. 6.3.1 (contrato Prata): Geely 82% sem upgrade e menor SOC entre os aptos sai antes do
-        Dolphin Mini 95% plugado; com o Geely a 78%, sai o Dolphin Mini; sem Prata apto, sai o MG4 (upgrade).
-        Com a agência fechada, ninguém retira (os contratos já vêm em horário de funcionamento).
-        """
-        # TODO(etapa 2)
-        return None
+    # --- próxima reserva compatível (6.3.3) ---
+    def _init_reservas(self) -> None:
+        if not hasattr(self, "_cts"):
+            self._cts = sorted(self.cen.contratos, key=lambda c: (c.retirada_t, c.id))
+            self._ptr = 0
+            self._feitos = set()
+            self._ranks = sorted({m.rank for m in self.cen.modelos.values()})
+
+    def _prox_reserva(self) -> dict:
+        """rank do carro -> instante da 1ª reserva ainda não retirada com categoria <= rank."""
+        self._init_reservas()
+        while self._ptr < len(self._cts) and self._cts[self._ptr].id in self._feitos:
+            self._ptr += 1
+        out, menor = {}, None
+        for c in self._cts[self._ptr:]:
+            if c.id in self._feitos:
+                continue
+            if menor is None or c.rank < menor:
+                menor = c.rank
+                for r in self._ranks:
+                    if r >= c.rank and r not in out:
+                        out[r] = c.retirada_t
+                if menor == self._ranks[0]:
+                    break
+        return out
+
+    def chave_prioridade(self):
+        """Função de ordenação da política (usada na fila e na divisão `prioridade`)."""
+        pr = self.pol["prioridade"]
+        if pr == "chegada":
+            return lambda v: (v.entrou_fila_t if v.entrou_fila_t is not None else 0.0, v.id)
+        if pr == "menor_soc":
+            return lambda v: (v.modelo.autonomia_km * v.soc / 100.0, v.id)
+        res = self._prox_reserva()
+        inf = float("inf")
+        return lambda v: (res.get(v.rank, inf), -v.soc, v.id)
 
     def ordenar_fila(self, t: float) -> None:
-        """Ordena `self.fila` pela política (`self.pol['prioridade']`). Regulamento 6.3.3.
+        self.fila.sort(key=self.chave_prioridade())
 
-        Chamar a cada tentativa de plugar. Último desempate sempre o menor `id`.
-        - `chegada`: FIFO por `entrou_fila_t` (os carros da fila em T0 entram todos no mesmo instante).
-        - `menor_soc`: menor autonomia restante em km (`autonomia_km * soc / 100`) primeiro; km, não SOC.
-        - `proxima_retirada`: primeiro quem tem a próxima reserva compatível mais cedo = primeiro contrato
-          ainda não retirado, em ordem de horário, com categoria <= a do carro; sem reserva vai para o fim.
-          Empate: maior SOC, depois menor `id`.
-        Ex. 6.3.3: A(Bronze 30%, 55.5 km), B(Prata 20%, 56.0 km), C(Ouro 55%), D(Diamante 40%) ->
-        menor_soc A,B,D,C; chegada A,B,C,D; proxima_retirada C,D,B,A.
-        """
-        # TODO(etapa 3): ordem básica (chegada ou menor_soc)
-        # TODO(etapa 6): as três prioridades
-        pass
+    def _divide(self, total: float, caps: list) -> list:
+        if self.pol["divisao"] == "prioridade":
+            return potencia.sequencial(total, caps)
+        return potencia.enchimento_agua(total, caps)
 
     def escolher_ponto(self, v: Veiculo) -> Optional[Ponto]:
-        """Em qual carregador v pluga (6.3.4), ou None se não houver saída livre.
-
-        Entre os pontos em operação (`not quebrado`) com saída livre, o que daria MAIS potência a v:
-        potência nominal do carregador dividida igualmente entre v e quem já está ali, cada um limitado
-        pela sua curva (`potencia.potencia_curva`, AC/DC conforme o carregador). Ignora o limite da agência
-        e a `divisao`. Empate: o primeiro de `self.pontos` (ordem alfabética do id).
-        Ex.: DC-60 com um Geely 30% e AC-22 vazio; chega Dolphin GS 20%: no DC-60 teria 60/2 = 30 kW,
-        no AC-22 só 7 kW -> DC-60.
-        """
-        # TODO(etapa 3)
-        return None
+        """6.3.4: ponto em operação com saída livre que daria mais potência a v (divisão igual estimada)."""
+        melhor, melhor_kw = None, -1.0
+        for p in self.pontos:
+            if p.quebrado or p.livres <= 0:
+                continue
+            tipo = p.modelo.tipo
+            outros = [u for u in p.conectados if u.soc < u.alvo - self.EPS]
+            caps = [potencia.potencia_curva(u.modelo, u.soc, tipo) for u in outros]
+            caps.append(potencia.potencia_curva(v.modelo, v.soc, tipo))
+            kw = potencia.enchimento_agua(p.modelo.potencia_kw, caps)[-1]
+            if kw > melhor_kw + 1e-9:
+                melhor, melhor_kw = p, kw
+        return melhor
 
     def plugar_fila(self, t: float) -> None:
-        """Pluga a fila (5.2, 6.3.3): só com a agência aberta, na ordem da fila, enquanto houver saída livre.
-
-        Ordene (`ordenar_fila`), escolha o ponto (`escolher_ponto`), conecte (`plugar`) e recalcule as
-        potências. Chamar quando um carro volta, termina a recarga, a agência abre ou um carregador volta.
-        Respeite plugados <= saídas (`checar_ocupacao`).
-        """
-        # TODO(etapa 3)
-        pass
+        """5.2: só aberta, na ordem da fila, enquanto houver saída livre em operação."""
+        if not self.aberta or not self.fila:
+            return
+        self.ordenar_fila(t)
+        for v in list(self.fila):
+            p = self.escolher_ponto(v)
+            if p is None:
+                break
+            self.plugar(v, p)
+        self.checar_ocupacao()
 
     def recalcular_potencias(self, t: float) -> None:
-        """Define `v.potencia_kw` de cada plugado (5.3, 6.3.5) e reagenda os fins de degrau.
-
-        Recalcular a cada mudança: carro pluga/despluga, troca de degrau, início/fim da ponta, evento.
-        Carro quebrado/em ponta com `evitar_ponta` -> 0 kW (continua plugado). Carro com SOC >= alvo -> 0.
-        Camada 1: dentro de cada carregador, a potência nominal vai para os carros que ainda carregam,
-        com teto na curva do carro (`potencia.potencia_curva`). Camada 2: o limite da agência
-        (`self.limite_kw`) é repartido, e o que cada carro recebeu na camada 1 é o seu máximo.
-        `divisao`: `igual` -> `potencia.enchimento_agua`; `prioridade` -> `potencia.sequencial` na ordem
-        da `prioridade` (ordenar a lista de plugados pela mesma regra da fila).
-        Ex. 6.3.5 (limite 40.5, 2x DC-60, Kwid 26.6, Geely 71.5, JAC 16.45, Dolphin GS 47.75):
-        igual -> 10.125 kW para cada um; prioridade (menor_soc) -> Kwid 26.6, Geely 13.9, JAC 0, Dolphin 0.
-        Com limite 80: igual -> JAC 16.45 e os outros 21.18333; prioridade -> Kwid 26.6, Geely 53.4, demais 0.
-        Depois chame `agendar_fim_degrau` para cada carro.
-        """
-        # TODO(etapa 3): camada 1 (carregador), sem limite da agência
-        # TODO(etapa 4): camada 2 (limite da agência e `divisao`)
-        pass
+        """5.3/6.3.5: camada 1 (carregador) e camada 2 (limite da agência), conforme `divisao`."""
+        chave = self.chave_prioridade() if self.pol["divisao"] == "prioridade" else None
+        carregando, cap1 = [], {}
+        for p in self.pontos:
+            ativos = [u for u in p.conectados if u.soc < u.alvo - self.EPS]
+            for u in p.conectados:
+                u.potencia_kw = 0.0
+            if p.quebrado or self.em_ponta or not ativos:
+                continue
+            if chave:
+                ativos.sort(key=chave)
+            caps = [potencia.potencia_curva(u.modelo, u.soc, p.modelo.tipo) for u in ativos]
+            for u, kw in zip(ativos, self._divide(p.modelo.potencia_kw, caps)):
+                cap1[u.id] = kw
+                carregando.append(u)
+        if carregando:
+            if sum(cap1[u.id] for u in carregando) > self.limite_kw + 1e-9:
+                if chave:
+                    carregando.sort(key=chave)
+                kws = self._divide(self.limite_kw, [cap1[u.id] for u in carregando])
+            else:
+                kws = [cap1[u.id] for u in carregando]
+            for u, kw in zip(carregando, kws):
+                u.potencia_kw = kw
+        for p in self.pontos:
+            for u in p.conectados:
+                self.agendar_fim_degrau(u, t)
 
     def agendar_fim_degrau(self, v: Veiculo, t: float) -> None:
-        """Agenda 'fim_recarga' para quando v chega ao próximo degrau de 5% ou ao alvo (5.3, 6.3.2).
-
-        A potência é constante dentro do degrau [5i, 5i+5). Próximo limite = min(alvo, (i+1)*5) com
-        i = int(soc/5 + 1e-9). Tempo = (limite - soc)/100 * bateria_kwh / potencia_kw * 60 min.
-        Defina `v.soc_limite` = esse limite, incremente `v.token` (invalida agendamentos antigos) e use
-        `self.agendar(t + dt, PRIO_FIM_RECARGA, 'fim_recarga', v.id, v.token)`. Potência 0 -> não agende.
-        Ex. 6.3.2: Dolphin GS (44.9 kWh) de 20% a 80% sozinho num DC-60 leva 36,7 min.
-        """
-        # TODO(etapa 3)
-        pass
+        """6.3.2: agenda 'fim_recarga' no próximo degrau de 5% ou no alvo."""
+        v.token += 1
+        if v.soc >= v.alvo - self.EPS:
+            v.soc_limite = None
+            return
+        i = int(v.soc / 5 + 1e-9)
+        lim = min(v.alvo, (i + 1) * 5.0)
+        v.soc_limite = lim
+        if v.potencia_kw <= 1e-12:
+            return
+        dt = (lim - v.soc) / 100.0 * v.modelo.bateria_kwh / v.potencia_kw * 60.0
+        self.agendar(t + dt, PRIO_FIM_RECARGA, "fim_recarga", v.id, v.token)
 
     def on_fim_recarga(self, vid: str, token: int, t: float) -> None:
-        """Chegou ao fim do degrau. Ignore se `token` != `v.token` (agendamento velho).
-
-        Ao atingir o alvo (80%): desplugar se a agência estiver aberta; se fechada, segura a saída até
-        a abertura (5.2). Depois tente plugar a fila (`plugar_fila`) e recalcule as potências.
-        """
-        # TODO(etapa 3)
-        pass
+        v = self.veiculos[vid]
+        if token != v.token or not v.plugado:
+            return
+        if v.soc_limite is not None and abs(v.soc - v.soc_limite) < 1e-6:
+            v.soc = v.soc_limite
+        if v.soc >= v.alvo - self.EPS:
+            v.soc = max(v.soc, v.alvo)
+            if self.aberta:
+                self.desplugar(v)
+            self.plugar_fila(t)
+        self.recalcular_potencias(t)
 
     def on_devolucao(self, vid: str, soc: float, t: float) -> None:
-        """Carro volta do contrato com `soc` e entra no pátio. Um carro devolvido apto pode sair no mesmo minuto (5.1)."""
-        # TODO(etapa 2)
         v = self.veiculos[vid]
         v.soc = soc
         self.entrar_patio(v, t)
 
     def on_abertura(self, t: float) -> None:
-        """Agência abre. Com ela aberta, plugar e desplugar voltam a valer (5.2).
-
-        Desplugue quem está parado no alvo (80%) segurando saída, depois `plugar_fila`.
-        """
-        # TODO(etapa 5)
         self.aberta = True
+        for p in self.pontos:
+            for u in list(p.conectados):
+                if u.soc >= u.alvo - self.EPS:
+                    self.desplugar(u)
+        self.plugar_fila(t)
+        self.recalcular_potencias(t)
 
     def on_fechamento(self, t: float) -> None:
-        """Agência fecha: ninguém retira nem pluga/despluga; a recarga continua (5.2).
-
-        Quem atinge 80% com a agência fechada segura a saída até a abertura.
-        """
-        # TODO(etapa 5)
         self.aberta = False
 
     def on_ponta(self, inicio: bool, t: float) -> None:
-        """Início/fim da ponta (seg-sex 18:00-21:00) com `evitar_ponta` (5.3, 6.3.6).
-
-        Na ponta todos a 0 kW, continuam plugados e plugar continua permitido. Recalcule as potências.
-        """
-        # TODO(etapa 5)
         self.em_ponta = inicio
+        self.recalcular_potencias(t)
 
     def agendar_eventos(self, eventos) -> None:
         """Agenda os eventos ao vivo (seção 11). `eventos`: lista de `params` (minutos desde 17/10/2049 00:00).
@@ -380,16 +418,24 @@ class Motor:
         O significado e o formato de `params` são explicados no anúncio de cada evento; vêm de
         `eventos_ativos` de GET /status. Ex. de uso: `self.agendar(t, PRIO_ABERTURA, 'evento', params)`.
         """
-        # TODO(etapa 7)
-        pass
+        # formato real ainda não anunciado; para testes próprios usamos ("quebra", ponto_id, bool)
+        for e in eventos:
+            pass
 
     def on_evento(self, t: float, *params) -> None:
         """Aplica um evento no instante t (ex.: limite da concessionária, carregador fora de operação).
 
         Recalcule as potências; ao voltar um carregador, tente plugar a fila (6.3.3).
+        Formato próprio de teste: ("quebra", ponto_id, True/False).
         """
-        # TODO(etapa 7)
-        pass
+        if params and params[0] == "quebra":
+            _, pid, quebrado = params
+            for p in self.pontos:
+                if p.id == pid:
+                    p.quebrado = quebrado
+            if not quebrado:
+                self.plugar_fila(t)
+            self.recalcular_potencias(t)
 
 
 def simular(cenario: Cenario, sub_normalizada: dict, eventos=()) -> Resultado:
